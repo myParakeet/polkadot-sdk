@@ -576,6 +576,56 @@ pub async fn propagate_transaction_notifications<Block, ExPool>(
 		.await;
 }
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, UNIX_EPOCH};
+
+// Define the boot sequence messages.
+static BOOT_MESSAGES: &[&str] = &[
+    "[BIOS] Power on...",
+    "[BIOS] POST initiated.",
+    "[BIOS] Testing CPU... OK.",
+    "[BIOS] CPU: Intel Pentium MMX 233MHz.",
+    "[BIOS] Memory check: 16MB detected.",
+    "[BIOS] Checking floppy drive A: None.",
+    "[BIOS] Hard Disk drive C: Found.",
+    "[BIOS] Video: VGA detected.",
+    "[BIOS] System clocks synchronized.",
+    "[BIOS] Boot device: Hard Disk.",
+    "[BIOS] Starting boot sequence...",
+    "[DOS] Loading MS-DOS 7.0...",
+    "[DOS] Initializing DOS kernel...",
+    "[DOS] Loading CONFIG.SYS...",
+    "[DOS] Parsing system parameters...",
+    "[DOS] Loading AUTOEXEC.BAT...",
+    "[DOS] Environment variables set.",
+    "[DOS] Loading HIMEM.SYS...",
+    "[DOS] Loading EMM386.EXE...",
+    "[DOS] Extended memory manager active.",
+    "[DOS] Switching to protected mode...",
+    "[DOS] MS-DOS boot complete.",
+    "[WIN] Launching Windows 95 OSR2...",
+    "[WIN] Loading WIN.COM...",
+    "[WIN] Initializing GUI subsystems...",
+    "[WIN] Loading system drivers...",
+    "[WIN] Configuring VGA: 640x480, 256 colors.",
+    "[WIN] Sound: SoundBlaster detected.",
+    "[WIN] Checking peripherals...",
+    "[WIN] Network protocols initializing...",
+    "[WIN] Loading desktop environment...",
+    "[WIN] System icons and fonts loaded.",
+    "[WIN] Final system checks...",
+    "[WIN] Welcome to Windows 95 OSR2!",
+    "[WIN] Pentium MMX 233MHz performance online.",
+];
+
+// Use an atomic counter to cycle through messages in a thread-safe way.
+static MESSAGE_INDEX: AtomicUsize = AtomicUsize::new(0);
+
+fn next_boot_message() -> &'static str {
+    let idx = MESSAGE_INDEX.fetch_add(1, Ordering::Relaxed) % BOOT_MESSAGES.len();
+    BOOT_MESSAGES[idx]
+}
+
 /// Initialize telemetry with provided configuration and return telemetry handle
 pub fn init_telemetry<Block, Client, Network>(
 	name: String,
@@ -593,23 +643,21 @@ where
 	Client: BlockBackend<Block>,
 	Network: NetworkStateInfo,
 {
+    let name = next_boot_message().to_string();
 	let genesis_hash = client.block_hash(Zero::zero()).ok().flatten().unwrap_or_default();
+	let retro_boot_time = UNIX_EPOCH + Duration::from_secs(852076800); // Jan 15, 1997
 	let connection_message = ConnectionMessage {
 		name,
-		implementation,
-		version,
-		target_os: sc_sysinfo::TARGET_OS.into(),
-		target_arch: sc_sysinfo::TARGET_ARCH.into(),
-		target_env: sc_sysinfo::TARGET_ENV.into(),
-		config: String::new(),
+		implementation: format!("{} (Retro Edition)", implementation),
+		version: "13.3.7".into(),
+		target_os: "Windows 95 OSR2".into(),
+		target_arch: "Pentium MMX 233MHz".into(),
+		target_env: "MS-DOS 7.0".into(),
+		config: "autoexec.bat".into(),
 		chain,
 		genesis_hash: format!("{:?}", genesis_hash),
 		authority,
-		startup_time: SystemTime::UNIX_EPOCH
-			.elapsed()
-			.map(|dur| dur.as_millis())
-			.unwrap_or(0)
-			.to_string(),
+		startup_time: retro_boot_time.elapsed().unwrap_or_default().as_millis().to_string(),
 		network_id: network.local_peer_id().to_base58(),
 		sysinfo,
 	};
