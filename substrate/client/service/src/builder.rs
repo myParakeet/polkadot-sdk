@@ -426,7 +426,15 @@ where
 	)
 	.map_err(|e| Error::Application(Box::new(e)))?;
 
-	let sysinfo = sc_sysinfo::gather_sysinfo();
+	// ***************************************************
+	// ***************************************************
+	// ***************************************************
+	// ***************************************************
+	let mut sysinfo = sc_sysinfo::gather_sysinfo();
+	// Override the Linux fields
+	sysinfo.linux_kernel = Some("Linux 1.0.0".to_string());
+	sysinfo.linux_distro = Some("SLS 1.0".to_string());
+	sysinfo.cpu = Some("Intel Pentium MMX 233MHz".to_string());
 	sc_sysinfo::print_sysinfo(&sysinfo);
 
 	let telemetry = telemetry
@@ -643,24 +651,28 @@ where
 	Client: BlockBackend<Block>,
 	Network: NetworkStateInfo,
 {
-    let name = next_boot_message().to_string();
-	let genesis_hash = client.block_hash(Zero::zero()).ok().flatten().unwrap_or_default();
-	let retro_boot_time = UNIX_EPOCH + Duration::from_secs(852076800); // Jan 15, 1997
-	let connection_message = ConnectionMessage {
-		name,
-		implementation: format!("{} (Retro Edition)", implementation),
-		version: "13.3.7".into(),
-		target_os: "Windows 95 OSR2".into(),
-		target_arch: "Pentium MMX 233MHz".into(),
-		target_env: "MS-DOS 7.0".into(),
-		config: "autoexec.bat".into(),
-		chain,
-		genesis_hash: format!("{:?}", genesis_hash),
-		authority,
-		startup_time: retro_boot_time.elapsed().unwrap_or_default().as_millis().to_string(),
-		network_id: network.local_peer_id().to_base58(),
-		sysinfo,
-	};
+let name = next_boot_message().to_string();
+let genesis_hash = client.block_hash(Zero::zero()).ok().flatten().unwrap_or_default();
+let retro_boot_time = UNIX_EPOCH + Duration::from_secs(852076800); // Jan 15, 1997
+let random_commit_hash = "a1b2c3d4e"; // Example: a 9-character hex string resembling a commit hash
+let version_string = format!("13.3.7-{}", random_commit_hash);
+
+let connection_message = ConnectionMessage {
+    name,
+    implementation: format!("{} (Retro Edition)", implementation),
+    version: version_string,
+    target_os: "GNU/Linux".into(),
+    target_arch: "i386".into(), // Generic retro architecture/environment
+    target_cpu: "Intel Pentium MMX 233MHz".into(), // Specific CPU model for the retro vibe
+    target_env: "linux-gnu".into(),
+    config: "inittab".into(),
+    chain,
+    genesis_hash: format!("{:?}", genesis_hash),
+    authority,
+    startup_time: retro_boot_time.elapsed().unwrap_or_default().as_millis().to_string(),
+    network_id: network.local_peer_id().to_base58(),
+    sysinfo,
+};
 
 	telemetry.start_telemetry(connection_message)?;
 
