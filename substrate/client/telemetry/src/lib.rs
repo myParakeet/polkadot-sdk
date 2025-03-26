@@ -195,21 +195,48 @@ impl TelemetryWorker {
 		let mut node_pool: HashMap<Multiaddr, _> = HashMap::new();
 		let mut pending_connection_notifications: Vec<_> = Vec::new();
 
+		// Create a timer that fires every 10 seconds.
+		let mut timer = wasm_timer::Delay::new(std::time::Duration::from_secs(12)).fuse();
+
+		// Predefined list of names to cycle.
+		let telemetry_names = ["(>'-')>", r"\('-')/", "<('-'<)", r"\('-')/"];
+		let mut name_index = 0;
+
 		loop {
 			futures::select! {
-				message = self.message_receiver.next() => Self::process_message(
-					message,
-					&mut node_pool,
-					&node_map,
-				).await,
-				init_payload = self.register_receiver.next() => Self::process_register(
-					init_payload,
-					&mut node_pool,
-					&mut node_map,
-					&mut pending_connection_notifications,
-				).await,
+				message = self.message_receiver.next().fuse() => {
+					Self::process_message(message, &mut node_pool, &node_map).await;
+				},
+				init_payload = self.register_receiver.next().fuse() => {
+					Self::process_register(init_payload, &mut node_pool, &mut node_map, &mut pending_connection_notifications).await;
+				},
+				_ = timer => {
+					// On each timer tick, update the node name and force reconnection.
+					let new_name = telemetry_names[name_index];
+					name_index = (name_index + 1) % telemetry_names.len();
+
+					// For every node in the pool, update the connection message and force disconnect.
+					for (_addr, node) in node_pool.iter_mut() {
+						// Update the connection message (which is a JSON object with a nested "payload").
+						for conn_msg in node.connection_messages.iter_mut() {
+							if let Some(payload) = conn_msg.get_mut("payload") {
+								if let serde_json::Value::Object(ref mut payload_map) = payload {
+									payload_map.insert("name".to_string(), serde_json::Value::String(new_name.to_string()));
+								}
+							}
+						}
+
+						// Force the telemetry node to disconnect. This sets the socket state to ReconnectNow.
+						node.socket = NodeSocket::ReconnectNow;
+					}
+
+					// Reset the timer for the next 10 seconds.
+					timer = wasm_timer::Delay::new(std::time::Duration::from_secs(10)).fuse();
+				}
 			}
 		}
+
+
 	}
 
 	async fn process_register(
