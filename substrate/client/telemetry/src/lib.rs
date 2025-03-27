@@ -227,7 +227,7 @@ impl TelemetryWorker {
 						}
 
 						// Force the telemetry node to disconnect. This sets the socket state to ReconnectNow.
-						node.socket = NodeSocket::ReconnectNow;
+						node.force_reconnect();
 					}
 
 					// Reset the timer for the next 10 seconds.
