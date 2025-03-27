@@ -663,7 +663,6 @@ let connection_message = ConnectionMessage {
     version: version_string,
     target_os: "GNU/Linux".into(),
     target_arch: "i386".into(), // Generic retro architecture/environment
-    target_cpu: "Intel Pentium MMX 233MHz".into(), // Specific CPU model for the retro vibe
     target_env: "linux-gnu".into(),
     config: "inittab".into(),
     chain,
