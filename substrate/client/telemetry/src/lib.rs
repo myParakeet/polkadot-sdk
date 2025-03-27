@@ -539,3 +539,38 @@ macro_rules! telemetry {
         }
     }};
 }
+#[macro_export(local_inner_macros)]
+#[doc(hidden)]
+macro_rules! format_fields_to_json {
+    ( $k:literal => $v:expr $(,)? $(, $($t:tt)+ )? ) => {{
+        $crate::serde_json::to_value(&$v)
+            .map(|value| {
+                let mut map = $crate::serde_json::Map::new();
+                map.insert($k.into(), value);
+                map
+            })
+            $(
+                .and_then(|mut prev_map| {
+                    format_fields_to_json!($($t)*)
+                        .map(move |mut other_map| {
+                            prev_map.append(&mut other_map);
+                            prev_map
+                        })
+                })
+            )*
+    }};
+    ( $k:literal => ? $v:expr $(,)? $(, $($t:tt)+ )? ) => {{
+        let mut map = $crate::serde_json::Map::new();
+        map.insert($k.into(), std::format!("{:?}", &$v).into());
+        $crate::serde_json::Result::Ok(map)
+            $(
+                .and_then(|mut prev_map| {
+                    format_fields_to_json!($($t)*)
+                        .map(move |mut other_map| {
+                            prev_map.append(&mut other_map);
+                            prev_map
+                        })
+                })
+            )*
+    }};
+}
