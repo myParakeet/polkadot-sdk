@@ -31,14 +31,14 @@ use wasm_timer::Delay;
 pub(crate) type ConnectionNotifierSender = mpsc::Sender<()>;
 pub(crate) type ConnectionNotifierReceiver = mpsc::Receiver<()>;
 
-/------------------------------------------
-/------------------------------------------
+//------------------------------------------
+//------------------------------------------
 /// Forces the node to reconnect by setting its socket state to `ReconnectNow`.
     pub fn force_reconnect(&mut self) {
         self.socket = NodeSocket::ReconnectNow;
     }
-/------------------------------------------
-/------------------------------------------
+//------------------------------------------
+//------------------------------------------
 	
 pub(crate) fn connection_notifier_channel() -> (ConnectionNotifierSender, ConnectionNotifierReceiver)
 {
