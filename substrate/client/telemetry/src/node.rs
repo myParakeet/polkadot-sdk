@@ -40,7 +40,6 @@ use wasm_timer::Delay;
 ///  - It doesn't stay in pending while waiting for connection. Instead, it moves data into the void
 ///    if the connection could not be established. This is important for the `Dispatcher` `Sink`
 ///    which we don't want to block if one connection is broken.
-#[derive(Debug)]
 pub(crate) struct Node<TTrans: Transport> {
     /// Address of the node.
     addr: Multiaddr,
@@ -256,7 +255,7 @@ where
 
     fn start_send(mut self: Pin<&mut Self>, item: TelemetryPayload) -> Result<(), Self::Error> {
         // Any buffered outgoing telemetry messages are discarded while (re-)connecting.
-        if let NodeSocket::Connected(NodeSocketConnected { sink, mut buf }) = mem::replace(&mut self.socket, NodeSocket::Poisoned) {
+        if let NodeSocket::Connected(NodeSocketConnected { mut sink, mut buf }) = mem::replace(&mut self.socket, NodeSocket::Poisoned) {
             if sink.poll_ready_unpin(&mut Context::from_waker(futures::task::noop_waker_ref())).is_ready() {
                 // If the sink is ready immediately, we can send without buffering.
                 if let Err(err) = sink.start_send_unpin(serde_json::to_vec(&item).expect("TelemetryPayload is always serializable; qed")) {
