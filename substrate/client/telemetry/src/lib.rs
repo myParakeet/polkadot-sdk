@@ -35,7 +35,8 @@
 //! Registering can happen at any point in time during the process execution.
 
 #![warn(missing_docs)]
-
+use sc_network::peer_info::Node;
+use futures::channel::mpsc;
 use futures::{channel::mpsc, prelude::*};
 use libp2p::Multiaddr;
 use log::{error, warn};
@@ -62,6 +63,16 @@ pub use endpoints::*;
 pub use error::*;
 use node::*;
 use transport::*;
+
+///---------------
+pub type ConnectionNotifierSender = mpsc::Sender<serde_json::Value>;
+pub type ConnectionNotifierReceiver = mpsc::Receiver<serde_json::Value>;
+
+fn connection_notifier_channel() -> (ConnectionNotifierSender, ConnectionNotifierReceiver) {
+    mpsc::channel(10)
+}
+///----------------
+
 
 /// Substrate DEBUG log level.
 pub const SUBSTRATE_DEBUG: VerbosityLevel = 9;
